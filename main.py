@@ -9,8 +9,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 MINI_APP_URL = "https://t.me/freemathodefbytServicebd_bot/Enroll"
 
 # এখানে ফ্রি ভিডিওর file_id বসাবো (এখন খালি রাখছি)
-FREE_VIDEO_FILE_ID = None
-
+FREE_VIDEO_FILE_ID = "BAACAgUAAxkBAAMaakjp1bpUVzexkRFwbrdulzm4dYIAAhYhAALAx0hWpBP6Frl9A5c8BA"
 web_app = Flask(__name__)
 
 @web_app.route('/')
