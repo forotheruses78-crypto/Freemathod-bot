@@ -16,18 +16,18 @@ def home():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("📚 Enroll Now — কোর্সে ভর্তি হন", url=MINI_APP_URL)]
+        [InlineKeyboardButton("📚 Enroll Now ", url=MINI_APP_URL)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "স্বাগতম Wave BD Course-এ! 🎉\n\n"
-        "ফেসবুক মার্কেটিং ও ইউটিউব ভিডিও তৈরির সম্পূর্ণ কোর্সে ভর্তি হতে নিচের বাটনে ক্লিক করুন।",
+        "স্বাগতম Freemathod Facebook & YouTube service BD -এ! 🎉\n\n"
+        " কপিরাইট ফ্রি ফেসবুক ভিডিও ও ইউটিউব ভিডিও পেতে নিচের বাটনে ক্লিক করুন।",
         reply_markup=reply_markup
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "কোর্স সংক্রান্ত সাহায্যের জন্য এডমিনের সাথে যোগাযোগ করুন।"
+        "যেকোনো সাহায্যের জন্য এডমিনের সাথে যোগাযোগ করুন।"
     )
 
 def run_bot():
