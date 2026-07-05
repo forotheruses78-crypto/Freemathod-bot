@@ -109,7 +109,7 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     video_code = f"video{count + 1}"
 
     bd_time = datetime.now(timezone.utc) + timedelta(hours=6)
-    if bd_time.hour < 18:
+    if 6 <= bd_time.hour < 18:
         category = "morning"
     else:
         category = "night"
