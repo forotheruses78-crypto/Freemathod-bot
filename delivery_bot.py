@@ -55,11 +55,39 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_id = video_data.get("file_id")
     title = video_data.get("title", "")
 
-    await context.bot.send_video(
+    sent_message = await context.bot.send_video(
         chat_id=update.effective_chat.id,
         video=file_id,
         caption=f"🎁 {title}"
     )
+
+    notice_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="⚠️ সতর্কতা: কিছু সময় পর এই ভিডিওটি চ্যাট থেকে অটোমেটিক ডিলিট হয়ে যাবে।"
+    )
+
+    asyncio.create_task(
+        delete_after_delay(context, update.effective_chat.id, sent_message.message_id, notice_message.message_id)
+    )
+
+
+async def delete_after_delay(context, chat_id, video_message_id, notice_message_id, delay_seconds=600):
+    await asyncio.sleep(delay_seconds)
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=video_message_id)
+    except Exception:
+        pass
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=notice_message_id)
+    except Exception:
+        pass
+    try:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="🗑️ Your files have been deleted from chat after some time."
+        )
+    except Exception:
+        pass
 
 # ---------- Admin: /addfree কমান্ড (এখন এই বটেই) ----------
 async def addfree_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
