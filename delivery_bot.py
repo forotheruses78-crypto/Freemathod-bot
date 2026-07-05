@@ -13,7 +13,7 @@ from telegram.ext import (
 
 BOT_TOKEN = os.environ.get("DELIVERY_BOT_TOKEN")
 IMGBB_API_KEY = os.environ.get("IMGBB_API_KEY")
-ADMIN_USER_ID = int(os.environ.get("ADMIN_USER_ID"))
+ADMIN_USER_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_USER_ID").split(",")]
 
 cred = credentials.Certificate("/etc/secrets/firebase-key.json")
 try:
@@ -62,7 +62,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------- Admin: /addfree কমান্ড (এখন এই বটেই) ----------
 async def addfree_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_USER_ID:
+    if update.effective_user.id not in ADMIN_USER_IDS:
         await update.message.reply_text("দুঃখিত, এই কমান্ড শুধু অ্যাডমিনের জন্য।")
         return ConversationHandler.END
     await update.message.reply_text("ঠিক আছে! প্রথমে থাম্বনেইল ছবিটা পাঠান।")
