@@ -2,6 +2,7 @@ import os
 import threading
 import asyncio
 import requests
+from datetime import datetime, timezone, timedelta
 import firebase_admin
 from firebase_admin import credentials, firestore
 from flask import Flask
@@ -107,14 +108,22 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = len(list(videos_ref.stream()))
     video_code = f"video{count + 1}"
 
+    bd_time = datetime.now(timezone.utc) + timedelta(hours=6)
+    if bd_time.hour < 18:
+        category = "morning"
+    else:
+        category = "night"
+
     videos_ref.add({
         "title": title,
         "thumbnail_url": data["thumbnail_url"],
         "file_id": data["file_id"],
-        "video_code": video_code
+        "video_code": video_code,
+        "category": category
     })
 
-    await update.message.reply_text(f"🎉 ভিডিও সফলভাবে যোগ হয়েছে! (কোড: {video_code})")
+    category_label = "সকালের ভিডিও" if category == "morning" else "রাতের ভিডিও"
+    await update.message.reply_text(f"🎉 ভিডিও সফলভাবে যোগ হয়েছে! (কোড: {video_code}, বিভাগ: {category_label})")
     del temp_data[user_id]
     return ConversationHandler.END
 
