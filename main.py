@@ -6,7 +6,7 @@ import requests
 import firebase_admin
 from firebase_admin import credentials, firestore
 from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, filters, ContextTypes
@@ -53,9 +53,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "free_video":
-        # Firebase থেকে সব ফ্রি ভিডিওর লিংক নিয়ে Mini App খুলবে
-        gallery_url = "https://forotheruses78-crypto.github.io/Freemathod-Facebook-YouTube-service-BD/gallery.html"
-        keyboard = [[InlineKeyboardButton("📂 ভিডিও গ্যালারি দেখুন", url=gallery_url)]]
+        free_video_app_url = "https://forotheruses78-crypto.github.io/Freemathod-Facebook-YouTube-service-BD/gallery.html"
+        keyboard = [[InlineKeyboardButton("Free Video", web_app=WebAppInfo(url=free_video_app_url))]]
         await query.message.reply_text(
             "নিচের বাটনে ক্লিক করে ফ্রি ভিডিও গ্যালারি দেখুন:",
             reply_markup=InlineKeyboardMarkup(keyboard)
