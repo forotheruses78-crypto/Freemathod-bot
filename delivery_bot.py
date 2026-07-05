@@ -122,7 +122,7 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "category": category
     })
 
-    category_label = "সকালের ভিডিও" if category == "morning" else "রাতের ভিডিও"
+    category_label = "দিনের ভিডিও" if category == "morning" else "রাতের ভিডিও"
     await update.message.reply_text(f"🎉 ভিডিও সফলভাবে যোগ হয়েছে! (কোড: {video_code}, বিভাগ: {category_label})")
     del temp_data[user_id]
     return ConversationHandler.END
