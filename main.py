@@ -14,7 +14,7 @@ from telegram.ext import (
 
 # ---------- কনফিগারেশন ----------
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-MINI_APP_URL = "https://t.me/freemathodefbytServicebd_bot/Enroll"
+MINI_APP_URL = "https://forotheruses78-crypto.github.io/Freemathod-Facebook-YouTube-service-BD/"
 IMGBB_API_KEY = os.environ.get("IMGBB_API_KEY")
 ADMIN_USER_ID = int(os.environ.get("ADMIN_USER_ID"))
 
