@@ -2,14 +2,14 @@ import os
 import threading
 import asyncio
 import requests
-from datetime import datetime, timezone, timedelta
 import firebase_admin
 from firebase_admin import credentials, firestore
 from flask import Flask
-from telegram import Update
+from datetime import datetime, timezone, timedelta
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler, ConversationHandler,
-    filters, ContextTypes
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
+    ConversationHandler, filters, ContextTypes
 )
 
 BOT_TOKEN = os.environ.get("DELIVERY_BOT_TOKEN")
@@ -26,13 +26,29 @@ db = firestore.client()
 THUMBNAIL, VIDEO, TITLE = range(3)
 temp_data = {}
 
+P_THUMBNAIL, P_VIDEO, P_TITLE, P_CATEGORY = range(10, 14)
+premium_temp_data = {}
+
+CATEGORY_LABELS = {
+    "fb_video": "ফেসবুক ভিডিও",
+    "yt_shorts": "ইউটিউব শর্টস",
+    "yt_long": "ইউটিউব লং ভিডিও",
+    "tutorial": "টিউটোরিয়াল"
+}
+
 web_app = Flask(__name__)
 
 @web_app.route('/')
 def home():
     return "Delivery bot is running!"
 
-# ---------- ভিডিও ডেলিভারি (আগের মতোই) ----------
+def get_time_label():
+    bd_time = datetime.now(timezone.utc) + timedelta(hours=6)
+    if 6 <= bd_time.hour < 18:
+        return "day"
+    else:
+        return "night"
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
 
@@ -43,7 +59,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     video_code = args[0]
-    videos_ref = db.collection("free_videos")
+
+    if video_code.startswith("pvideo"):
+        collection_name = "premium_videos"
+    else:
+        collection_name = "free_videos"
+
+    videos_ref = db.collection(collection_name)
     query = videos_ref.where("video_code", "==", video_code).limit(1)
     results = list(query.stream())
 
@@ -89,7 +111,7 @@ async def delete_after_delay(context, chat_id, video_message_id, notice_message_
     except Exception:
         pass
 
-# ---------- Admin: /addfree কমান্ড (এখন এই বটেই) ----------
+
 async def addfree_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_USER_IDS:
         await update.message.reply_text("দুঃখিত, এই কমান্ড শুধু অ্যাডমিনের জন্য।")
@@ -136,21 +158,19 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = len(list(videos_ref.stream()))
     video_code = f"video{count + 1}"
 
-    bd_time = datetime.now(timezone.utc) + timedelta(hours=6)
-    if 6 <= bd_time.hour < 18:
-        category = "morning"
-    else:
-        category = "night"
+    time_label = get_time_label()
+    category_field = "morning" if time_label == "day" else "night"
 
     videos_ref.add({
         "title": title,
         "thumbnail_url": data["thumbnail_url"],
         "file_id": data["file_id"],
         "video_code": video_code,
-        "category": category
+        "category": category_field,
+        "created_at": firestore.SERVER_TIMESTAMP
     })
 
-    category_label = "দিনের ভিডিও" if category == "morning" else "রাতের ভিডিও"
+    category_label = "দিনের ভিডিও" if category_field == "morning" else "রাতের ভিডিও"
     await update.message.reply_text(f"🎉 ভিডিও সফলভাবে যোগ হয়েছে! (কোড: {video_code}, বিভাগ: {category_label})")
     del temp_data[user_id]
     return ConversationHandler.END
@@ -159,13 +179,108 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("প্রক্রিয়া বাতিল করা হয়েছে।")
     return ConversationHandler.END
 
+
+async def addpremium_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_USER_IDS:
+        await update.message.reply_text("দুঃখিত, এই কমান্ড শুধু অ্যাডমিনের জন্য।")
+        return ConversationHandler.END
+    await update.message.reply_text("ঠিক আছে! প্রথমে থাম্বনেইল ছবিটা পাঠান।")
+    return P_THUMBNAIL
+
+async def receive_thumbnail_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    photo = update.message.photo[-1]
+    file = await context.bot.get_file(photo.file_id)
+    file_path = "temp_thumb_premium.jpg"
+    await file.download_to_drive(file_path)
+
+    with open(file_path, "rb") as img_file:
+        response = requests.post(
+            "https://api.imgbb.com/1/upload",
+            params={"key": IMGBB_API_KEY},
+            files={"image": img_file}
+        )
+    result = response.json()
+
+    if result.get("success"):
+        thumbnail_url = result["data"]["url"]
+        premium_temp_data[update.effective_user.id] = {"thumbnail_url": thumbnail_url}
+        await update.message.reply_text("✅ থাম্বনেইল আপলোড হয়েছে! এখন ভিডিওটা পাঠান।")
+        return P_VIDEO
+    else:
+        await update.message.reply_text("❌ থাম্বনেইল আপলোডে সমস্যা হয়েছে, আবার চেষ্টা করুন।")
+        return P_THUMBNAIL
+
+async def receive_video_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    video_file_id = update.message.video.file_id
+    user_id = update.effective_user.id
+    premium_temp_data[user_id]["file_id"] = video_file_id
+    await update.message.reply_text("✅ ভিডিও পাওয়া গেছে! এখন ভিডিওর টাইটেল লিখুন।")
+    return P_TITLE
+
+async def receive_title_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    title = update.message.text
+    premium_temp_data[user_id]["title"] = title
+
+    keyboard = [
+        [InlineKeyboardButton("ফেসবুক ভিডিও", callback_data="cat_fb_video")],
+        [InlineKeyboardButton("ইউটিউব শর্টস", callback_data="cat_yt_shorts")],
+        [InlineKeyboardButton("ইউটিউব লং ভিডিও", callback_data="cat_yt_long")],
+        [InlineKeyboardButton("টিউটোরিয়াল", callback_data="cat_tutorial")],
+    ]
+    await update.message.reply_text(
+        "এই ভিডিওটা কোন ক্যাটাগরিতে যোগ হবে?",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return P_CATEGORY
+
+async def receive_category_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    category_map = {
+        "cat_fb_video": "fb_video",
+        "cat_yt_shorts": "yt_shorts",
+        "cat_yt_long": "yt_long",
+        "cat_tutorial": "tutorial",
+    }
+    category = category_map.get(query.data)
+
+    user_id = query.from_user.id
+    data = premium_temp_data[user_id]
+
+    videos_ref = db.collection("premium_videos")
+    count = len(list(videos_ref.stream()))
+    video_code = f"pvideo{count + 1}"
+
+    time_label = get_time_label()
+
+    videos_ref.add({
+        "title": data["title"],
+        "thumbnail_url": data["thumbnail_url"],
+        "file_id": data["file_id"],
+        "video_code": video_code,
+        "category": category,
+        "time_label": time_label,
+        "created_at": firestore.SERVER_TIMESTAMP
+    })
+
+    await query.edit_message_text(
+        f"🎉 প্রিমিয়াম ভিডিও সফলভাবে যোগ হয়েছে!\n"
+        f"কোড: {video_code}\n"
+        f"ক্যাটাগরি: {CATEGORY_LABELS.get(category)}"
+    )
+    del premium_temp_data[user_id]
+    return ConversationHandler.END
+
+
 def run_bot():
     asyncio.set_event_loop(asyncio.new_event_loop())
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
 
-    conv_handler = ConversationHandler(
+    free_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("addfree", addfree_start)],
         states={
             THUMBNAIL: [MessageHandler(filters.PHOTO, receive_thumbnail)],
@@ -174,7 +289,19 @@ def run_bot():
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
-    app.add_handler(conv_handler)
+    app.add_handler(free_conv_handler)
+
+    premium_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("addpremium", addpremium_start)],
+        states={
+            P_THUMBNAIL: [MessageHandler(filters.PHOTO, receive_thumbnail_premium)],
+            P_VIDEO: [MessageHandler(filters.VIDEO, receive_video_premium)],
+            P_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_title_premium)],
+            P_CATEGORY: [CallbackQueryHandler(receive_category_premium)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+    app.add_handler(premium_conv_handler)
 
     app.run_polling(stop_signals=None)
 
