@@ -38,7 +38,7 @@ def home():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🎁 Free Video", callback_data="free_video")],
-        [InlineKeyboardButton("📚 Premium Video", url=MINI_APP_URL)]
+        [InlineKeyboardButton("📚 Premium Video", web_app=WebAppInfo(url=MINI_APP_URL))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
