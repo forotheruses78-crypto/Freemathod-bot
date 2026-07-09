@@ -93,7 +93,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def delete_after_delay(context, chat_id, video_message_id, notice_message_id, delay_seconds=600):
+async def delete_after_delay(context, chat_id, video_message_id, notice_message_id, delay_seconds=1200):
     await asyncio.sleep(delay_seconds)
     try:
         await context.bot.delete_message(chat_id=chat_id, message_id=video_message_id)
